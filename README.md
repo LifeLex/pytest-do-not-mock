@@ -68,21 +68,6 @@ def test_string_path():
 - `patch.object()` targeting the protected function
 - Other mocking is allowed
 
-## Testing
-
-```bash
-tox
-```
-
-Runs tests across Python 3.10–3.13, plus ruff linting and type checking (mypy + pyright).
-
-```bash
-tox -e py313          # single Python version
-tox -e linting        # ruff check + format
-tox -e typing         # mypy + pyright
-pytest tests/ -v      # run tests directly
-```
-
 ## Development
 
 ```bash
@@ -90,7 +75,37 @@ git clone git@github.com:LifeLex/pytest-do-not-mock.git
 cd pytest-do-not-mock
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+make install
+```
+
+### Available commands
+
+```
+make help         Show all commands
+make install      Install in editable mode with dev dependencies
+make test         Run tests
+make lint         Run ruff linter
+make format       Run ruff formatter
+make typecheck    Run mypy and pyright
+make check        Run all checks (lint, format, types, tests)
+make clean        Remove build artifacts
+make build        Build source and wheel distributions
+```
+
+### Running checks
+
+```bash
+make check        # everything: lint + format + typecheck + tests
+make lint         # ruff linter only
+make typecheck    # mypy + pyright
+make test         # pytest only
+```
+
+Or via tox for multi-version testing:
+
+```bash
+tox               # all environments (py310–py313, linting, typing)
+tox -e py313      # single Python version
 ```
 
 ### Project structure
@@ -98,11 +113,19 @@ pip install -e ".[dev]"
 ```
 src/pytest_do_not_mock/
 ├── __init__.py      # Public API: do_not_mock, DoNotMockError
-└── plugin.py        # Decorator + pytest hooks
+├── plugin.py        # Pytest hooks (entry point)
+├── decorator.py     # @pytest.do_not_mock decorator
+├── guards.py        # Mock interception and guard context manager
+└── protected.py     # ProtectedFunc resolution and validation
 
 tests/
 └── test_do_not_mock.py
 ```
+
+### Releasing
+
+1. Tag the commit: `git tag v0.1.0 && git push origin v0.1.0`
+2. GitHub Actions builds and publishes to PyPI automatically via trusted publishing
 
 ## License
 

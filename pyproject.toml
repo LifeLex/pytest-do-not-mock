@@ -82,6 +82,7 @@ exclude_lines = [
 line-length = 120
 target-version = "py310"
 fix = true
+exclude = ["src/pytest_do_not_mock/_version.py"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "B", "I"]
