@@ -27,3 +27,13 @@ env/
 
 # Type checking
 .mypy_cache/
+.pyright/
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Setuptools SCM
+src/pytest_do_not_mock/_version.py
