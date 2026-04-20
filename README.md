@@ -2,6 +2,32 @@
 
 Pytest plugin to prevent mocking of critical functions in tests.
 
+## Why this exists
+
+Inspired by [_Increase Test Fidelity By Avoiding Mocks_](https://testing.googleblog.com/2024/02/increase-test-fidelity-by-avoiding-mocks.html) (Google Testing Blog) and the "Test Doubles" chapter of _Software Engineering at Google_.
+
+**Test fidelity** is how closely a test's behavior resembles production. Mocks are cheap and fast, but every mock is a guess about how a dependency behaves. The Google guidance is a simple preference order:
+
+1. **Real implementation** — highest fidelity, run the actual code.
+2. **Fake** — a lightweight, working implementation (e.g. in-memory DB) maintained alongside the real one.
+3. **Mock** — last resort, when the real thing and a fake are both out of reach.
+
+The problem in practice: once `unittest.mock` is in the toolbox, step 3 becomes step 1. Tests pass, coverage looks great, and bugs ship anyway because nothing real ran. This plugin makes it so that you can enforce step 1.
+
+### When to use it
+
+- Core domain logic where a mocked test gives false confidence.
+- Functions that already have a fake or in-memory implementation available.
+- Integration-style tests where swapping the real call for a mock defeats the purpose of the test.
+- Codebases where mocks have historically drifted from reality and caused production incidents.
+
+### When _not_ to use it
+
+- Unit tests for code whose only job is to orchestrate external I/O, those are exactly the cases the Google article says mocks are legitimate for.
+- Error paths that are genuinely hard to trigger otherwise.
+- Fast feedback loops where a real dependency would turn a small test into a medium or large one.
+- As a blanket ban. The decorator is opt-in per test on purpose, it should be used when and where needed.
+
 ## Installation
 
 ```bash
