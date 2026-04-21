@@ -26,7 +26,7 @@ The problem in practice: once `unittest.mock` is in the toolbox, step 3 becomes 
 - Unit tests for code whose only job is to orchestrate external I/O, those are exactly the cases the Google article says mocks are legitimate for.
 - Error paths that are genuinely hard to trigger otherwise.
 - Fast feedback loops where a real dependency would turn a small test into a medium or large one.
-- As a blanket ban. The decorator is opt-in per test on purpose, it should be used when and where needed.
+- As a blanket ban. The marker is opt-in per test on purpose, it should be used when and where needed.
 
 ## Installation
 
@@ -40,12 +40,12 @@ The plugin activates automatically once installed — no configuration needed.
 
 ### Block all mocking in a test
 
-Use `@pytest.do_not_mock` with no arguments to prevent any mocking:
+Use `@pytest.mark.do_not_mock` with no arguments to prevent any mocking:
 
 ```python
 import pytest
 
-@pytest.do_not_mock
+@pytest.mark.do_not_mock
 def test_payment_integration():
     """This test must use real implementations, no mocks allowed."""
     result = process_payment(100.0)
@@ -56,40 +56,57 @@ Any attempt to use `Mock()`, `MagicMock()`, `patch()`, or similar will raise `Do
 
 ### Protect specific functions
 
-Pass functions (or string paths) to only block mocking of those targets:
+Use `protect=` to pass function objects, or positional args for string paths:
 
 ```python
 from myapp import process_payment, send_email
 
-@pytest.do_not_mock(process_payment)
+# Single function object
+@pytest.mark.do_not_mock(protect=process_payment)
 def test_selective():
     """process_payment cannot be mocked, but other functions can."""
     with patch("myapp.send_email"):  # this is fine
         result = process_payment(100.0)
         assert result is True
-```
 
-Multiple functions and string paths are supported:
-
-```python
-@pytest.do_not_mock(process_payment, validate_user)
+# Multiple function objects
+@pytest.mark.do_not_mock(protect=[process_payment, validate_user])
 def test_multiple():
     ...
 
-@pytest.do_not_mock("myapp.payments.charge")
+# String module paths (positional args)
+@pytest.mark.do_not_mock("myapp.payments.charge")
 def test_string_path():
     ...
+
+# Mixed
+@pytest.mark.do_not_mock("myapp.send_email", protect=process_payment)
+def test_mixed():
+    ...
+```
+
+### Apply to a class or module
+
+```python
+# All tests in this class
+@pytest.mark.do_not_mock
+class TestPaymentIntegration:
+    def test_charge(self): ...
+    def test_refund(self): ...
+
+# All tests in this module
+pytestmark = pytest.mark.do_not_mock
 ```
 
 ### What gets blocked
 
-**No-args mode** (`@pytest.do_not_mock`):
+**No-args mode** (`@pytest.mark.do_not_mock`):
 - `Mock()`, `MagicMock()`, `AsyncMock()`
 - `patch()` as decorator, context manager, or `start()`/`stop()`
 - `patch.object()`, `patch.dict()`
 - `create_autospec()`
 
-**Targeted mode** (`@pytest.do_not_mock(func)`):
+**Targeted mode** (`@pytest.mark.do_not_mock(protect=func)`):
 - `patch()` targeting the protected function
 - `patch.object()` targeting the protected function
 - Other mocking is allowed
@@ -130,7 +147,7 @@ make test         # pytest only
 Or via tox for multi-version testing:
 
 ```bash
-tox               # all environments (py310–py313, linting, typing)
+tox               # all environments (py310-py313, linting, typing)
 tox -e py313      # single Python version
 ```
 
@@ -138,14 +155,18 @@ tox -e py313      # single Python version
 
 ```
 src/pytest_do_not_mock/
-├── __init__.py      # Public API: do_not_mock, DoNotMockError
-├── plugin.py        # Pytest hooks (entry point)
-├── decorator.py     # @pytest.do_not_mock decorator
+├── __init__.py      # Public API: DoNotMockError
+├── errors.py        # DoNotMockError exception
+├── plugin.py        # Pytest marker + hookwrapper (entry point)
 ├── guards.py        # Mock interception and guard context manager
 └── protected.py     # ProtectedFunc resolution and validation
 
 tests/
-└── test_do_not_mock.py
+├── conftest.py        # Shared fixtures and example app code
+├── test_plugin.py     # Marker registration, error messages, cleanup
+├── test_block_all.py  # Block-all mode (every mock/patch variant)
+├── test_targeted.py   # Targeted mode (protect=, string paths)
+└── test_scopes.py     # Class-level and module-level markers
 ```
 
 ### Releasing

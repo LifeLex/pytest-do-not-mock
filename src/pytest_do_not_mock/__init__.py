@@ -5,8 +5,7 @@ try:
 except ImportError:
     __version__ = "unknown"
 
-from .decorator import do_not_mock
 from .errors import DoNotMockError
 
 
-__all__ = ["do_not_mock", "DoNotMockError", "__version__"]
+__all__ = ["DoNotMockError", "__version__"]
