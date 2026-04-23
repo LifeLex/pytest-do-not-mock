@@ -45,22 +45,33 @@ def _collect_protected(marker: pytest.Mark) -> list[ProtectedFunc]:
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_call(item: pytest.Item) -> Generator[None, None, None]:
     """If the test is marked with ``@pytest.mark.do_not_mock``, install mock guards."""
-    marker = item.get_closest_marker("do_not_mock")
-    if marker is None:
+    markers = list(item.iter_markers("do_not_mock"))
+    if not markers:
         yield
         return
 
     test_name = item.name
-    protected = _collect_protected(marker)
 
-    if not protected:
+    block_all = any(not m.args and not m.kwargs.get("protect") for m in markers)
+
+    if block_all:
         with mock_guard(test_name, block_all=True):
             yield
-    else:
-        validate_no_mocks(protected, test_name, "before")
-        with mock_guard(test_name, protected=protected):
-            yield
-        validate_no_mocks(protected, test_name, "after")
+        return
+
+    seen: set[str] = set()
+    protected: list[ProtectedFunc] = []
+    for m in markers:
+        for pf in _collect_protected(m):
+            if pf.module_path in seen:
+                continue
+            seen.add(pf.module_path)
+            protected.append(pf)
+
+    validate_no_mocks(protected, test_name, "before")
+    with mock_guard(test_name, protected=protected):
+        yield
+    validate_no_mocks(protected, test_name, "after")
 
 
 def pytest_report_header(config: pytest.Config) -> str:
