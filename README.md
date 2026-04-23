@@ -98,6 +98,21 @@ class TestPaymentIntegration:
 pytestmark = pytest.mark.do_not_mock
 ```
 
+Markers **stack** across scopes. When `do_not_mock` is applied at more than one level (module, class, function), every marker is honored — the function-level marker does not replace the outer ones.
+
+```python
+# Protected at module scope
+pytestmark = pytest.mark.do_not_mock("myapp.db.save")
+
+@pytest.mark.do_not_mock("myapp.api.send")
+class TestThing:
+    # This test protects all three: db.save, api.send, and email.notify
+    @pytest.mark.do_not_mock("myapp.email.notify")
+    def test_x(self): ...
+```
+
+A bare marker at any scope (no args, no `protect=`) wins over targeted inner markers and blocks all mocking for tests it covers.
+
 ### What gets blocked
 
 **No-args mode** (`@pytest.mark.do_not_mock`):
