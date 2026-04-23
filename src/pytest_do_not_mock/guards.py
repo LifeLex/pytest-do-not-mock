@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import unittest.mock
-from collections.abc import Iterator
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -75,7 +75,7 @@ def mock_guard(
     *,
     block_all: bool = False,
     protected: list[ProtectedFunc] | None = None,
-) -> Iterator[None]:
+) -> Generator[None, None, None]:
     """Install mock guards for the duration of a ``with`` block, then restore originals."""
     global _active_guard  # noqa: PLW0603
 
