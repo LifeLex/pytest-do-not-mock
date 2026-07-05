@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import pkgutil
 import sys
 import unittest.mock
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from .errors import DoNotMockError
@@ -33,10 +34,32 @@ class ProtectedFunc:
         full_path = f"{module}.{name}" if module else name
         return cls(name=name, module_path=full_path, obj=func, _self_obj=self_obj, _module_name=module)
 
+    def resolve(self) -> ProtectedFunc:
+        """Return a copy with the live function object imported and attached.
+
+        String targets stay unresolved dotted paths until this point so that
+        collecting tests never imports application code. A path that cannot
+        be resolved raises rather than silently protecting nothing.
+        """
+        if self.obj is not None:
+            return self
+        try:
+            obj = pkgutil.resolve_name(self.module_path)
+        except (ImportError, AttributeError, ValueError) as exc:
+            raise DoNotMockError(f"\n@pytest.mark.do_not_mock cannot resolve '{self.module_path}': {exc}\n") from exc
+        return replace(self, obj=obj)
+
     def matches_patch_target(self, target: Any, attribute: str) -> bool:
-        """Return True if a patch on *target.attribute* would affect this function."""
+        """Return True if a patch on *target.attribute* would affect this function.
+
+        The primary check is object identity, which catches the function under
+        any name it was imported as. The module-and-name check remains for
+        targets without a resolved object.
+        """
         if self._self_obj is not None:
             return target is self._self_obj and attribute == self.name
+        if self.obj is not None and getattr(target, attribute, None) is self.obj:
+            return True
         if self._module_name:
             return target is sys.modules.get(self._module_name) and attribute == self.name
         return False
